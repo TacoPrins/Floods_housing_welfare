@@ -38,21 +38,31 @@ def solve(grids, par, vCoeff_C,vCoeff_NC, config):
     shape_stay                          = (grids.vTime.size, par.iNj, k_dim, grids.vG.size, grids.vM.size, grids.vH.size, grids.vL.size, grids.vE.size)
     shape_buy                           = (grids.vTime.size, par.iNj, k_dim, grids.vG.size, grids.vX.size,  grids.vE.size)
     shape_rent                          = (grids.vTime.size, par.iNj, k_dim, grids.vG.size, grids.vX.size, grids.vE.size)
+    
+    #Welfare (_wf) arrays are only recorded when config.welfare is on; otherwise they are size-1 placeholders that are never filled
+    if config.welfare:
+        shape_stay_wf = shape_stay
+        shape_buy_wf  = shape_buy
+        shape_rent_wf = shape_rent
+    else:
+        shape_stay_wf = (1, 1, 1, 1, 1, 1, 1, 1)
+        shape_buy_wf  = (1, 1, 1, 1, 1, 1)
+        shape_rent_wf = (1, 1, 1, 1, 1, 1)
 
     vt_buy_c        = np.zeros(shape_buy, dtype = np.float64) 
-    vt_buy_c_wf      = np.zeros(shape_buy, dtype = np.float64) 
+    vt_buy_c_wf      = np.zeros(shape_buy_wf, dtype = np.float64) 
     qt_buy_nc       = np.zeros(shape_buy, dtype = np.float64) 
     vt_stay_c       = np.zeros(shape_stay, dtype = np.float64)
-    vt_stay_c_wf    = np.zeros(shape_stay, dtype = np.float64)
+    vt_stay_c_wf    = np.zeros(shape_stay_wf, dtype = np.float64)
     qt_stay_c       = np.zeros(shape_stay, dtype = np.float64) 
     vt_buy_nc       = np.zeros(shape_buy, dtype = np.float64)
-    vt_buy_nc_wf    = np.zeros(shape_buy, dtype = np.float64)
+    vt_buy_nc_wf    = np.zeros(shape_buy_wf, dtype = np.float64)
     qt_buy_c        = np.zeros(shape_buy, dtype = np.float64) 
     vt_stay_nc      = np.zeros(shape_stay, dtype = np.float64)
-    vt_stay_nc_wf   = np.zeros(shape_stay, dtype = np.float64)
+    vt_stay_nc_wf   = np.zeros(shape_stay_wf, dtype = np.float64)
     qt_stay_nc      = np.zeros(shape_stay, dtype = np.float64) 
     vt_renter  = np.zeros(shape_rent, dtype = np.float64)
-    vt_renter_wf= np.zeros(shape_rent, dtype = np.float64)
+    vt_renter_wf= np.zeros(shape_rent_wf, dtype = np.float64)
     qt_renter  = np.zeros(shape_rent, dtype = np.float64) 
     b_stay_c        = np.zeros(shape_stay, dtype = np.float64) 
     b_stay_nc       = np.zeros(shape_stay, dtype = np.float64) 
@@ -61,11 +71,19 @@ def solve(grids, par, vCoeff_C,vCoeff_NC, config):
     c_nc            = np.zeros(shape_stay, dtype = np.float64) 
     
     #Matrix of expected welfare on a savings (before interest) grid
-    v_owner_c_wf=np.zeros(shape_stay, dtype = np.float64) 
-    v_owner_nc_wf=np.zeros(shape_stay, dtype = np.float64) 
-    v_nonowner_wf=np.zeros(shape_rent, dtype = np.float64) 
+    v_owner_c_wf=np.zeros(shape_stay_wf, dtype = np.float64) 
+    v_owner_nc_wf=np.zeros(shape_stay_wf, dtype = np.float64) 
+    v_nonowner_wf=np.zeros(shape_rent_wf, dtype = np.float64) 
     
-    #MINOR BUG - if t==0, the steady state price should be used and not the t==0 price (because of the unanticipated jump)
+    #The household functions always expect welfare inputs. When welfare is off, they are handed the
+    #ordinary value functions instead, and their welfare outputs are discarded (not recorded).
+    if config.welfare:
+        in_stay_c_wf, in_stay_nc_wf = vt_stay_c_wf, vt_stay_nc_wf
+        in_renter_wf, in_buy_c_wf, in_buy_nc_wf = vt_renter_wf, vt_buy_c_wf, vt_buy_nc_wf
+    else:
+        in_stay_c_wf, in_stay_nc_wf = vt_stay_c, vt_stay_nc
+        in_renter_wf, in_buy_c_wf, in_buy_nc_wf = vt_renter, vt_buy_c, vt_buy_nc
+    
     mortgage_size_C = np.zeros((grids.vH.size,grids.vL.size), dtype = np.float64)
     mortgage_size_NC= np.zeros((grids.vH.size,grids.vL.size), dtype = np.float64)
     type_mat = misc.DoubleGrid(np.linspace(0, k_dim-1, k_dim), np.linspace(0, grids.vG.size-1, grids.vG.size))
@@ -108,19 +126,23 @@ def solve(grids, par, vCoeff_C,vCoeff_NC, config):
                     w_renter_last,q_renter_last, w_renter_wf_last = continuation_value_epsilons.solve_last_period_renters(par, grids)
                 else:
                     coastal_stayer_inputs=precompute_coastal_stayer_inputs(shape_stay,j, k_index, g_index, t_index,
-                        vt_stay_c,vt_stay_c_wf,qt_stay_c)
+                        vt_stay_c,in_stay_c_wf,qt_stay_c)
                     noncoastal_stayer_inputs=precompute_noncoastal_stayer_inputs(shape_stay,j, k_index, g_index, t_index,
-                        vt_stay_nc,vt_stay_nc_wf,qt_stay_nc)
+                        vt_stay_nc,in_stay_nc_wf,qt_stay_nc)
                     mover_inputs=precompute_mover_inputs(shape_stay, j, k_index, g_index, t_index,
                         vt_renter, vt_buy_c, vt_buy_nc,
-                        vt_renter_wf, vt_buy_c_wf, vt_buy_nc_wf,
+                        in_renter_wf, in_buy_c_wf, in_buy_nc_wf,
                         qt_renter, qt_buy_c, qt_buy_nc)
                     
 
                     
-                    w_c_vE,q_c_vE, w_c_wf_vE, v_owner_c_wf[t_index_prime,j+1, k_index,g_index,:,:,:,:] = continuation_value_epsilons.solve_owners_C(par, grids,  j+1, k_index,  dPi_S, dPi_L, coastal_stayer_inputs,mover_inputs,dP_C_prime, mortgage_size_C, config)
-                    w_nc_vE,q_nc_vE, w_nc_wf_vE,  v_owner_nc_wf[t_index_prime,j+1, k_index,g_index,:,:,:,:]  = continuation_value_epsilons.solve_owners_NC(par, grids,  j+1, k_index, noncoastal_stayer_inputs,mover_inputs, dP_NC_prime,  mortgage_size_NC, config)
-                    w_renter_vE,q_renter_vE, w_renter_wf_vE, v_nonowner_wf[t_index_prime,j+1, k_index,g_index,:,:] = continuation_value_epsilons.solve_renters(par, grids,  j+1, k_index, mover_inputs, config)
+                    w_c_vE,q_c_vE, w_c_wf_vE, v_owner_c_wf_new = continuation_value_epsilons.solve_owners_C(par, grids,  j+1, k_index,  dPi_S, dPi_L, coastal_stayer_inputs,mover_inputs,dP_C_prime, mortgage_size_C, config)
+                    w_nc_vE,q_nc_vE, w_nc_wf_vE,  v_owner_nc_wf_new = continuation_value_epsilons.solve_owners_NC(par, grids,  j+1, k_index, noncoastal_stayer_inputs,mover_inputs, dP_NC_prime,  mortgage_size_NC, config)
+                    w_renter_vE,q_renter_vE, w_renter_wf_vE, v_nonowner_wf_new = continuation_value_epsilons.solve_renters(par, grids,  j+1, k_index, mover_inputs, config)
+                    if config.welfare:
+                        v_owner_c_wf[t_index_prime,j+1, k_index,g_index,:,:,:,:] = v_owner_c_wf_new
+                        v_owner_nc_wf[t_index_prime,j+1, k_index,g_index,:,:,:,:] = v_owner_nc_wf_new
+                        v_nonowner_wf[t_index_prime,j+1, k_index,g_index,:,:] = v_nonowner_wf_new
                                                              
                
                 for e_index in range(grids.vE.size): 
@@ -132,13 +154,19 @@ def solve(grids, par, vCoeff_C,vCoeff_NC, config):
                         w_c,q_c, w_c_wf = w_c_vE[:, :, :, e_index],q_c_vE[:, :, :, e_index], w_c_wf_vE[:, :, :, e_index]
                         w_nc,q_nc, w_nc_wf = w_nc_vE[:, :, :, e_index],q_nc_vE[:, :, :, e_index], w_nc_wf_vE[:, :, :, e_index] 
                         w_renter,q_renter, w_renter_wf = w_renter_vE[:, e_index],q_renter_vE[:, e_index], w_renter_wf_vE[:, e_index]
-                    vt_stay_c[t_index,j, k_index,g_index,:,:,:,e_index], c_c[t_index,j, k_index,g_index,:,:,:,e_index], qt_stay_c[t_index,j, k_index,g_index,:,:,:,e_index], b_stay_c[t_index,j, k_index,g_index,:,:,:,e_index], vt_stay_c_wf[t_index,j, k_index,g_index,:,:,:,e_index] = stayer_problem.solve(par, grids, j, k_index, g_index, w_c, q_c, w_c_wf, config)
-                    vt_stay_nc[t_index,j, k_index,g_index,:,:,:,e_index], c_nc[t_index,j, k_index,g_index,:,:,:,e_index],  qt_stay_nc[t_index,j, k_index,g_index,:,:,:,e_index], b_stay_nc[t_index,j, k_index,g_index,:,:,:,e_index], vt_stay_nc_wf[t_index,j, k_index,g_index,:,:,:,e_index] = stayer_problem.solve(par, grids, j, k_index, g_index_nc, w_nc,q_nc, w_nc_wf, config)
+                    vt_stay_c[t_index,j, k_index,g_index,:,:,:,e_index], c_c[t_index,j, k_index,g_index,:,:,:,e_index], qt_stay_c[t_index,j, k_index,g_index,:,:,:,e_index], b_stay_c[t_index,j, k_index,g_index,:,:,:,e_index], vt_stay_c_wf_new = stayer_problem.solve(par, grids, j, k_index, g_index, w_c, q_c, w_c_wf, config)
+                    vt_stay_nc[t_index,j, k_index,g_index,:,:,:,e_index], c_nc[t_index,j, k_index,g_index,:,:,:,e_index],  qt_stay_nc[t_index,j, k_index,g_index,:,:,:,e_index], b_stay_nc[t_index,j, k_index,g_index,:,:,:,e_index], vt_stay_nc_wf_new = stayer_problem.solve(par, grids, j, k_index, g_index_nc, w_nc,q_nc, w_nc_wf, config)
                    
-                    vt_renter[t_index,j, k_index,g_index,:,e_index],qt_renter[t_index,j, k_index,g_index,:,e_index], b_renter[t_index,j, k_index,g_index,:,e_index], vt_renter_wf[t_index,j, k_index,g_index,:,e_index] = stayer_problem_renter.solve(par, grids, j, k_index, g_index, t_index, dP_C,dP_NC, dP_C_prime,dP_NC_prime, w_renter,q_renter, w_renter_wf, config)
+                    vt_renter[t_index,j, k_index,g_index,:,e_index],qt_renter[t_index,j, k_index,g_index,:,e_index], b_renter[t_index,j, k_index,g_index,:,e_index], vt_renter_wf_new = stayer_problem_renter.solve(par, grids, j, k_index, g_index, t_index, dP_C,dP_NC, dP_C_prime,dP_NC_prime, w_renter,q_renter, w_renter_wf, config)
 
-                    vt_buy_c[t_index,j, k_index,g_index,:,e_index], qt_buy_c[t_index,j, k_index,g_index,:,e_index], vt_buy_c_wf[t_index,j, k_index,g_index,:,e_index] = buyer_problem_epsilons.solve(par, grids, j, k_index,  g_index, e_index, dP_C, grids.mPTI_C[j,e_index], vt_stay_c[t_index,j, k_index,g_index,:,:,:,e_index], c_c[t_index,j, k_index,g_index,:,:,:,e_index], vt_stay_c_wf[t_index,j, k_index,g_index,:,:,:,e_index], config)
-                    vt_buy_nc[t_index,j, k_index,g_index,:,e_index], qt_buy_nc[t_index,j, k_index,g_index,:,e_index], vt_buy_nc_wf[t_index,j, k_index,g_index,:,e_index] = buyer_problem_epsilons.solve(par, grids, j, k_index, g_index_nc, e_index, dP_NC, grids.mPTI_NC[j,e_index], vt_stay_nc[t_index,j, k_index,g_index,:,:,:,e_index], c_nc[t_index,j, k_index,g_index,:,:,:,e_index], vt_stay_nc_wf[t_index,j, k_index,g_index,:,:,:,e_index], config)
+                    vt_buy_c[t_index,j, k_index,g_index,:,e_index], qt_buy_c[t_index,j, k_index,g_index,:,e_index], vt_buy_c_wf_new = buyer_problem_epsilons.solve(par, grids, j, k_index,  g_index, e_index, dP_C, grids.mPTI_C[j,e_index], vt_stay_c[t_index,j, k_index,g_index,:,:,:,e_index], c_c[t_index,j, k_index,g_index,:,:,:,e_index], vt_stay_c_wf_new, config)
+                    vt_buy_nc[t_index,j, k_index,g_index,:,e_index], qt_buy_nc[t_index,j, k_index,g_index,:,e_index], vt_buy_nc_wf_new = buyer_problem_epsilons.solve(par, grids, j, k_index, g_index_nc, e_index, dP_NC, grids.mPTI_NC[j,e_index], vt_stay_nc[t_index,j, k_index,g_index,:,:,:,e_index], c_nc[t_index,j, k_index,g_index,:,:,:,e_index], vt_stay_nc_wf_new, config)
+                    if config.welfare:
+                        vt_stay_c_wf[t_index,j, k_index,g_index,:,:,:,e_index] = vt_stay_c_wf_new
+                        vt_stay_nc_wf[t_index,j, k_index,g_index,:,:,:,e_index] = vt_stay_nc_wf_new
+                        vt_renter_wf[t_index,j, k_index,g_index,:,e_index] = vt_renter_wf_new
+                        vt_buy_c_wf[t_index,j, k_index,g_index,:,e_index] = vt_buy_c_wf_new
+                        vt_buy_nc_wf[t_index,j, k_index,g_index,:,e_index] = vt_buy_nc_wf_new
                 
                 #We need an additional block of code because the trick of exploiting already computed continuation values doesn't work when t==0 or j==0 
                 if config.welfare==True:
