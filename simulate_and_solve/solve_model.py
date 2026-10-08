@@ -52,7 +52,7 @@ def solve():
     _save("vCoeff_C_RE", vCoeff_C_RE); _save("vCoeff_NC_RE", vCoeff_NC_RE)
 
     #We only simulate the RE distributions forwards without policy experiments, so we don't need to keep the initial distributions 
-    del mDist0_c_initial_RE, mDist0_nc_initial_RE, mDist0_renter_initial_RE
+    del mDist0_c_initial_RE, mDist0_nc_initial_RE, mDist0_renter_initial_RE, _
     
     ## config solve_initial_ss
     vCoeff_C_initial_HE, vCoeff_NC_initial_HE,  mDist0_c_initial_HE, mDist0_nc_initial_HE, mDist0_renter_initial_HE, rental_stock_C_initial_HE, rental_stock_NC_initial_HE, coastal_beq_initial_HE, noncoastal_beq_initial_HE, savings_beq_initial_HE  = equil.initialise_coefficients_ss(par, grids, vCoeff_C_initial_HE_guess, vCoeff_NC_initial_HE_guess, cfg.solve_initial_ss_HE)
@@ -64,7 +64,7 @@ def solve():
     ## config: find_coef_baseline  
     _, _, vCoeff_C_HE, vCoeff_NC_HE, _, _, _, _, _, _, _=equil.find_coefficients(par, grids, vCoeff_C_HE_guess, vCoeff_NC_HE_guess,dP_C_initial_HE, dP_NC_initial_HE,mDist0_c_initial_HE, mDist0_nc_initial_HE, mDist0_renter_initial_HE, rental_stock_C_initial_HE, rental_stock_NC_initial_HE, coastal_beq_initial_HE, noncoastal_beq_initial_HE, savings_beq_initial_HE,cfg.find_coeff_path_HE)
     _save("vCoeff_C_HE", vCoeff_C_HE); _save("vCoeff_NC_HE", vCoeff_NC_HE)
-
+    del _
         
     "find distribution in 2026 (experiment year) with generate price path using coefficients from baseline"
     price_history, mDist1_c_2026, mDist1_nc_2026, mDist1_renter_2026, rental_stock_C_2026, rental_stock_NC_2026, vcoastal_beq, vnoncoastal_beq, vsavings_beq, _, _, _, _, _, _, _, _, _,_,_=equil.generate_pricepath(grids, par, vCoeff_C_HE, vCoeff_NC_HE, dP_C_initial_HE, dP_NC_initial_HE, mDist0_c_initial_HE, mDist0_nc_initial_HE, mDist0_renter_initial_HE, rental_stock_C_initial_HE, rental_stock_NC_initial_HE, coastal_beq_initial_HE, noncoastal_beq_initial_HE, savings_beq_initial_HE, cfg.path_until_experiment)
@@ -75,17 +75,18 @@ def solve():
     savings_beq_2026=vsavings_beq[-1]
     
     #From this point, we are simulating forward from the experiment year, so delete initial distributions
-    del mDist0_c_initial_HE, mDist0_nc_initial_HE, mDist0_renter_initial_HE 
+    del mDist0_c_initial_HE, mDist0_nc_initial_HE, mDist0_renter_initial_HE, _
 
     
     "find coefficients for two experiments using correct initial distributions (2026)"
     _, _, vCoeff_C_BR, vCoeff_NC_BR, _, _, _, _, _, _, _=equil.find_coefficients(par, grids, vCoeff_C_BR_guess, vCoeff_NC_BR_guess,dP_C_2026, dP_NC_2026,mDist1_c_2026, mDist1_nc_2026, mDist1_renter_2026, rental_stock_C_2026, rental_stock_NC_2026, coastal_beq_2026, noncoastal_beq_2026, savings_beq_2026,cfg.find_coeff_buildingrest)
     _save("vCoeff_C_BR", vCoeff_C_BR); _save("vCoeff_NC_BR", vCoeff_NC_BR)
+    del _
     "find coefficients for two experiments using correct initial distributions (2026)"
     _, _, vCoeff_C_MP, vCoeff_NC_MP, _, _, _, _, _, _, _=equil.find_coefficients(par, grids, vCoeff_C_MP_guess, vCoeff_NC_MP_guess,dP_C_2026, dP_NC_2026,mDist1_c_2026, mDist1_nc_2026, mDist1_renter_2026, rental_stock_C_2026, rental_stock_NC_2026, coastal_beq_2026, noncoastal_beq_2026, savings_beq_2026,cfg.find_coeff_mortgageprem)
     _save("vCoeff_C_MP", vCoeff_C_MP); _save("vCoeff_NC_MP", vCoeff_NC_MP)
     
-    del mDist1_c_2026, mDist1_nc_2026, mDist1_renter_2026
+    del mDist1_c_2026, mDist1_nc_2026, mDist1_renter_2026, _
     
     "find coefficients for 4 different terminal steady states"
     vCoeff_C_terminal_RE_guess = _g("vCoeff_C_terminal_RE")
