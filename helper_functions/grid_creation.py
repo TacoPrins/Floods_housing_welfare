@@ -46,8 +46,8 @@ def create(par, start_2026=False, mortgage_premium = False):
     
 
   
-    vZ= np.array([1, 0.95, 0.60, 0.1])
-    vPDF_z= np.array([1, 0.5, 0.35, 0.15])
+    vZ     = np.array([1, 0.953, 0.636, 0.205])
+    vPDF_z = np.array([1, 0.588, 0.318, 0.094])
     
     #WARNING - RETHINK FOR INCREASING CURVE
     vPi_L=np.ones(len(par.vPi_S_median))*par.vPi_S_median[0]
